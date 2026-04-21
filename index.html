@@ -1008,13 +1008,122 @@ footer a { color: var(--amber); text-decoration: none; }
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .explorer-layout { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; }
   nav { padding: 0 14px; }
   .hero-kpi { grid-template-columns: 1fr; }
   .summary-detail.open { grid-template-columns: 1fr; }
   .summary-compact { flex-wrap: wrap; gap: 12px; }
   .findings-grid { grid-template-columns: 1fr; }
+
+  /* === MOBILE SIDEBAR DRAWER === */
+  .sidebar {
+    position: fixed !important;
+    top: 52px; left: 0; bottom: 0;
+    width: min(320px, 88vw);
+    height: calc(100vh - 52px) !important;
+    z-index: 300;
+    transform: translateX(-110%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: 4px 0 32px rgba(0,0,0,.5);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .sidebar-backdrop {
+    display: block !important;
+  }
+  .sidebar-backdrop.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Floating filter button */
+  .mobile-filter-btn {
+    display: flex !important;
+  }
+
+  /* Explorer layout stacks */
+  .explorer-layout {
+    display: block;
+  }
+  .main-content {
+    padding: 12px;
+  }
+
+  /* Summary compact stats scroll */
+  .summary-compact-inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .summary-compact-inner::-webkit-scrollbar { display: none; }
+  .sum-compact-stat {
+    padding: 10px 16px;
+    flex-shrink: 0;
+  }
+
+  /* Table scroll hint visible on mobile */
+  .tbl-scroll-hint { display: flex !important; }
+
+  /* Pager ใหญ่ขึ้นสำหรับนิ้ว */
+  .pager-btn { width: 36px; height: 36px; font-size: 12px; }
+
+  /* KPI val เล็กลงนิดเพื่อไม่ overflow */
+  .kpi-val { font-size: 22px; }
+
 }
+
+/* Backdrop overlay */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 52px 0 0 0;
+  background: rgba(0,0,0,.55);
+  z-index: 299;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .28s ease;
+}
+
+/* Mobile filter FAB */
+.mobile-filter-btn {
+  display: none;
+  position: fixed;
+  bottom: 22px; right: 18px;
+  z-index: 400;
+  align-items: center; gap: 7px;
+  padding: 11px 18px;
+  background: var(--orange);
+  color: #000;
+  border: none; border-radius: 100px;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(242,101,34,.45);
+  transition: transform .15s, box-shadow .15s;
+}
+.mobile-filter-btn:active { transform: scale(.96); }
+.mobile-filter-btn svg { width: 15px; height: 15px; stroke: #000; stroke-width: 2.2; fill: none; }
+
+/* Table scroll hint */
+.tbl-scroll-hint {
+  display: none;
+  align-items: center; gap: 6px;
+  padding: 6px 18px 0;
+  font-family: var(--mono); font-size: 9px;
+  color: var(--t4); letter-spacing: .05em;
+}
+
+/* Mobile sort button */
+.mobile-sort-btn {
+  font-family: var(--mono); font-size: 9px;
+  padding: 4px 10px; border-radius: 100px;
+  border: 1px solid var(--b2);
+  background: transparent; color: var(--t3);
+  cursor: pointer; transition: all .15s;
+  letter-spacing: .03em;
+}
+.mobile-sort-btn:hover { color: var(--t2); border-color: var(--b3); }
+.mobile-sort-btn.active { background: var(--orange-dim); color: var(--orange); border-color: rgba(242,101,34,.3); }
 </style>
 </head>
 <body>
@@ -1320,10 +1429,25 @@ footer a { color: var(--amber); text-decoration: none; }
 
 <!-- ======== EXPLORER PAGE ======== -->
 <div id="page-explore" class="page">
+
+  <!-- Mobile: backdrop + FAB -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+  <button class="mobile-filter-btn" id="mobile-filter-btn" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24"><path d="M3 6h18M7 12h10M10 18h4"/></svg>
+    กรอง
+    <span id="filter-badge" style="display:none;background:#000;color:var(--orange);border-radius:100px;padding:1px 7px;font-size:10px;margin-left:2px"></span>
+  </button>
+
   <div class="explorer-layout">
 
     <!-- SIDEBAR -->
-    <div class="sidebar">
+    <div class="sidebar" id="main-sidebar">
+
+      <!-- Mobile close button (hidden on desktop via JS) -->
+      <div id="sidebar-close-row" style="display:none;align-items:center;justify-content:space-between;margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--b1)">
+        <span style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--t4)">ตัวกรอง</span>
+        <button onclick="closeSidebar()" style="background:transparent;border:1px solid var(--b2);color:var(--t2);font-size:13px;cursor:pointer;padding:3px 10px;border-radius:var(--r1);font-family:var(--mono)">✕ ปิด</button>
+      </div>
 
       <!-- 1. ปีงบประมาณ -->
       <div>
@@ -1472,6 +1596,12 @@ footer a { color: var(--amber); text-decoration: none; }
         <div class="tbl-head">
           <span class="tbl-title">รายการรายจ่าย</span>
           <span class="tbl-badge" id="tbl-count">—</span>
+        </div>
+        <!-- Mobile sort bar -->
+        <div id="mobile-sort-bar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--b1);gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--t4);letter-spacing:.08em">เรียงโดย</span>
+          <button class="mobile-sort-btn active" id="msb-budget" onclick="mobileSortBy('budget')">งบมากสุด ↓</button>
+          <button class="mobile-sort-btn" id="msb-plan" onclick="mobileSortBy('plan')">แผนงาน A→Z</button>
         </div>
         <div style="overflow-x:auto">
           <table class="tbl">
@@ -2226,6 +2356,7 @@ function onFilter(){
 
   page=1;
   renderExplore();
+  updateFilterBadge();
 }
 
 function clearFilters(){
@@ -2643,6 +2774,10 @@ function getDelta(d){
 }
 
 function renderTable(){
+  // Show/hide mobile sort bar
+  const mobileSortBar = document.getElementById('mobile-sort-bar');
+  if(mobileSortBar) mobileSortBar.style.display = isMobile() ? 'flex' : 'none';
+
   const sorted=[...filtered].sort((a,b)=>{
     let av=a[sortCol],bv=b[sortCol];
     if(typeof av==='string')return sortDir*av.localeCompare(bv,'th');
@@ -2653,7 +2788,6 @@ function renderTable(){
   if(page>maxPage)page=1;
   const rows=sorted.slice((page-1)*PER,page*PER);
 
-  // Badge shows count only
   document.getElementById('tbl-count').textContent=total.toLocaleString()+' รายการ';
   document.getElementById('no-result').style.display=rows.length?'none':'block';
 
@@ -2661,49 +2795,106 @@ function renderTable(){
   const is68=year==='68';
   const body=document.getElementById('tbl-body');
 
-  // Update table headers based on year
-  const thead=document.querySelector('.tbl thead tr');
-  if(isCmp){
-    thead.innerHTML=`
-      <th onclick="sortBy('plan')"># แผนงาน ↕</th>
-      <th onclick="sortBy('work')">งาน ↕</th>
-      <th>ประเภทงบ</th>
-      <th>งบย่อย</th>
-      <th>รายการ</th>
-      <th class="num" onclick="sortBy('b68')">ปี 2568 (บาท) ↕</th>
-      <th class="num" onclick="sortBy('b69')">ปี 2569 (บาท) ↕</th>
-      <th class="num">เปลี่ยนแปลง</th>`;
-  } else {
-    thead.innerHTML=`
-      <th onclick="sortBy('plan')"># แผนงาน ↕</th>
-      <th onclick="sortBy('work')">งาน ↕</th>
-      <th>ประเภทงบ</th>
-      <th>งบย่อย</th>
-      <th>รายการ</th>
-      <th class="num" onclick="sortBy('${is68?'b68':'b69'}')">งบประมาณ ปี 25${year} (บาท) ↕</th>`;
-  }
+  // --- MOBILE: card view ---
+  if(isMobile()){
+    body.innerHTML=rows.map((d,i)=>{
+      const delta=getDelta(d);
+      const deltaHtml=delta?`<span class="delta ${delta.cls}">${delta.label}</span>`:'';
+      const rowNum=(page-1)*PER+i+1;
+      const planShort=d.ps||d.p.replace('แผนงาน','').trim();
+      const workShort=d.w.replace('งาน','').trim();
 
-  body.innerHTML=rows.map((d,i)=>{
-    const delta=getDelta(d);
-    const deltaHtml=delta?`<span class="delta ${delta.cls}">${delta.label}</span>`:'';
-    const n68=d.b68>0?`<span style="font-family:var(--mono);font-size:10px">${fmt(d.b68)}</span>`:'<span style="color:var(--t4)">—</span>';
-    const n69=d.b69>0?`<span style="font-family:var(--mono);font-size:10px;color:var(--orange2)">${fmt(d.b69)}</span>`:'<span style="color:var(--t4)">—</span>';
-    const nSingle=`<span style="font-family:var(--mono);font-size:11px;color:var(--orange2)">${fmt(is68?d.b68:d.b69)}</span>`;
-    return`<tr>
-      <td>
-        <div class="td-row-num">${(page-1)*PER+i+1}</div>
-        <div class="td-plan">${d.ps||d.p.replace('แผนงาน','')}</div>
-      </td>
-      <td style="font-size:10px;color:var(--t3)">${d.w.replace('งาน','')}</td>
-      <td><span class="td-type ${d.bt}">${d.bt}</span></td>
-      <td style="font-size:10px;color:var(--t3);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.bs||'—'}</td>
-      <td><div class="td-item">${d.i}</div></td>
-      ${isCmp
-        ? `<td class="num">${n68}</td><td class="num">${n69}</td><td class="num">${deltaHtml}</td>`
-        : `<td class="num">${nSingle}</td>`
+      let budgetHtml='';
+      if(isCmp){
+        const n68=d.b68>0?`<span style="font-family:var(--mono);font-size:11px;color:var(--t2)">${fmt(d.b68)}</span>`:'<span style="color:var(--t4)">—</span>';
+        const n69=d.b69>0?`<span style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--orange2)">${fmt(d.b69)}</span>`:'<span style="color:var(--t4)">—</span>';
+        budgetHtml=`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)">
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">2568</span>
+              ${n68}
+            </div>
+            <div style="color:var(--t4);font-size:10px">→</div>
+            <div style="display:flex;flex-direction:column;gap:1px;align-items:flex-end">
+              <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">2569</span>
+              ${n69}
+            </div>
+            <div>${deltaHtml}</div>
+          </div>`;
+      } else {
+        const val=is68?d.b68:d.b69;
+        budgetHtml=`
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--b1)">
+            <span style="font-family:var(--mono);font-size:8px;color:var(--t4)">ปี 25${year}</span>
+            <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--orange2)">${fmt(val)}</span>
+          </div>`;
       }
-    </tr>`;
-  }).join('');
+
+      return`<tr style="display:block;background:var(--bg2);border:1px solid var(--b1);border-radius:var(--r2);padding:12px;margin-bottom:8px">
+        <td style="display:block;padding:0;border:none">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <span class="td-type ${d.bt}">${d.bt}</span>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--t4)">#${rowNum}</span>
+            </div>
+          </div>
+          <div style="font-size:13px;color:var(--t1);line-height:1.45;font-weight:500;margin-bottom:6px">${d.i}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <span style="font-size:10px;color:var(--t3)">${planShort}</span>
+            <span style="color:var(--b2)">·</span>
+            <span style="font-size:10px;color:var(--t4)">${workShort}</span>
+          </div>
+          ${budgetHtml}
+        </td>
+      </tr>`;
+    }).join('');
+    // hide thead on mobile
+    document.querySelector('.tbl thead').style.display='none';
+  } else {
+    // --- DESKTOP: standard table view ---
+    document.querySelector('.tbl thead').style.display='';
+    const thead=document.querySelector('.tbl thead tr');
+    if(isCmp){
+      thead.innerHTML=`
+        <th onclick="sortBy('plan')"># แผนงาน ↕</th>
+        <th onclick="sortBy('work')">งาน ↕</th>
+        <th>ประเภทงบ</th>
+        <th>งบย่อย</th>
+        <th>รายการ</th>
+        <th class="num" onclick="sortBy('b68')">ปี 2568 (บาท) ↕</th>
+        <th class="num" onclick="sortBy('b69')">ปี 2569 (บาท) ↕</th>
+        <th class="num">เปลี่ยนแปลง</th>`;
+    } else {
+      thead.innerHTML=`
+        <th onclick="sortBy('plan')"># แผนงาน ↕</th>
+        <th onclick="sortBy('work')">งาน ↕</th>
+        <th>ประเภทงบ</th>
+        <th>งบย่อย</th>
+        <th>รายการ</th>
+        <th class="num" onclick="sortBy('${is68?'b68':'b69'}')">งบประมาณ ปี 25${year} (บาท) ↕</th>`;
+    }
+    body.innerHTML=rows.map((d,i)=>{
+      const delta=getDelta(d);
+      const deltaHtml=delta?`<span class="delta ${delta.cls}">${delta.label}</span>`:'';
+      const n68=d.b68>0?`<span style="font-family:var(--mono);font-size:10px">${fmt(d.b68)}</span>`:'<span style="color:var(--t4)">—</span>';
+      const n69=d.b69>0?`<span style="font-family:var(--mono);font-size:10px;color:var(--orange2)">${fmt(d.b69)}</span>`:'<span style="color:var(--t4)">—</span>';
+      const nSingle=`<span style="font-family:var(--mono);font-size:11px;color:var(--orange2)">${fmt(is68?d.b68:d.b69)}</span>`;
+      return`<tr>
+        <td>
+          <div class="td-row-num">${(page-1)*PER+i+1}</div>
+          <div class="td-plan">${d.ps||d.p.replace('แผนงาน','')}</div>
+        </td>
+        <td style="font-size:10px;color:var(--t3)">${d.w.replace('งาน','')}</td>
+        <td><span class="td-type ${d.bt}">${d.bt}</span></td>
+        <td style="font-size:10px;color:var(--t3);max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.bs||'—'}</td>
+        <td><div class="td-item">${d.i}</div></td>
+        ${isCmp
+          ? `<td class="num">${n68}</td><td class="num">${n69}</td><td class="num">${deltaHtml}</td>`
+          : `<td class="num">${nSingle}</td>`
+        }
+      </tr>`;
+    }).join('');
+  }
 
   if(maxPage<=1){document.getElementById('pager').innerHTML='';return;}
   const r=2;let phtml='';
@@ -2741,6 +2932,105 @@ function switchFindingsTab(tab) {
     sub.textContent = '8 ประเด็นสำคัญที่เปลี่ยนแปลงอย่างมีนัยสำคัญจากปีก่อน (2568)';
   }
 }
+
+/* ===== MOBILE SORT ===== */
+function mobileSortBy(mode){
+  document.querySelectorAll('.mobile-sort-btn').forEach(b=>b.classList.remove('active'));
+  if(mode==='budget'){
+    sortCol = year==='68' ? 'b68' : 'b69';
+    sortDir = -1;
+    document.getElementById('msb-budget').classList.add('active');
+  } else {
+    sortCol = 'plan'; sortDir = 1;
+    document.getElementById('msb-plan').classList.add('active');
+  }
+  page=1; renderTable();
+}
+
+/* ===== MOBILE SIDEBAR DRAWER ===== */
+function isMobile(){ return window.innerWidth <= 768; }
+
+function toggleSidebar(){
+  const sb = document.getElementById('main-sidebar');
+  if(sb.classList.contains('open')) closeSidebar();
+  else openSidebar();
+}
+
+function openSidebar(){
+  const sb = document.getElementById('main-sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  const closeRow = document.getElementById('sidebar-close-row');
+  sb.classList.add('open');
+  bd.classList.add('show');
+  if(closeRow) closeRow.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar(){
+  const sb = document.getElementById('main-sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  const closeRow = document.getElementById('sidebar-close-row');
+  sb.classList.remove('open');
+  bd.classList.remove('show');
+  if(closeRow) closeRow.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+// Show close row on mobile resize
+function handleResize(){
+  if(!isMobile()) {
+    closeSidebar();
+    document.body.style.overflow = '';
+  }
+}
+window.addEventListener('resize', handleResize);
+
+// Re-render table on resize (card ↔ table switch)
+let _resizeTimer;
+window.addEventListener('resize', function(){
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(function(){
+    if(filtered.length > 0) renderTable();
+  }, 150);
+});
+
+// Update filter badge on FAB
+function updateFilterBadge(){
+  if(!isMobile()) return;
+  const badge = document.getElementById('filter-badge');
+  if(!badge) return;
+  let count = 0;
+  const plan = document.getElementById('f-plan');
+  const work = document.getElementById('f-work');
+  const q = document.getElementById('q');
+  if(plan && plan.value) count++;
+  if(work && work.value) count++;
+  if(q && q.value.trim()) count++;
+  document.querySelectorAll('.type-checks input[type=checkbox]').forEach(cb=>{
+    if(cb.checked) count++;
+  });
+  document.querySelectorAll('.status-cb').forEach(cb=>{ if(cb.checked) count++; });
+  if(count > 0){
+    badge.textContent = count;
+    badge.style.display = 'inline';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Patch filter functions to also update badge
+const _origOnPlanChange = typeof onPlanChange === 'function' ? onPlanChange : null;
+document.addEventListener('DOMContentLoaded', function(){
+  // Hook into filter inputs for badge update
+  ['f-plan','f-work','q','f-type','f-sub','f-deep-plan'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('change', updateFilterBadge);
+    if(el) el.addEventListener('input', updateFilterBadge);
+  });
+  document.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', updateFilterBadge);
+  });
+});
 
 /* ===== PAGE NAV ===== */
 function showPage(p){
